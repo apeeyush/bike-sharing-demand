@@ -39,6 +39,7 @@ def transform_data(df):
     df['weekday'] = weekday_values
     df['isSunday'] = isSunday_values
     df['time_since_epoch'] = time_since_epoch_values
+    # df['log-count'] = df['count']
     return df
 
 
@@ -62,21 +63,22 @@ train_data = df[train_features].values
 test_data = test_df[features].values
 
 # # Train rf
-# forest = RandomForestRegressor(n_estimators=120)
-# forest.fit(train_data[0::,1:-1], train_data[0::,-1])
-# output = forest.predict(test_data[0::,1::]).astype(int)
-# # Prepare Kaggle Submission
-# datetimes = test_df['datetime'].values
-# predictions_file = open("../data/random_forest_submission.csv", "wb")
-# open_file_object = csv.writer(predictions_file)
-# open_file_object.writerow(["datetime","count"])
-# open_file_object.writerows(zip(datetimes, output))
-# predictions_file.close()
-# print 'Done.'
-
-# Validation
-X_train, X_test, y_train, y_test = train_test_split(train_data[0::,1:-1], train_data[0::,-1], test_size=0.2, random_state=0)
 forest = RandomForestRegressor(n_estimators=120)
-forest.fit(X_train, y_train)
-output = forest.predict(X_test)
-print rmsle(output, y_test)
+forest.fit(train_data[0::,0:-1], train_data[0::,-1])
+output = forest.predict(test_data[0::,0::]).astype(int)
+# Prepare Kaggle Submission
+datetimes = test_df['datetime'].values
+predictions_file = open("../data/random_forest_submission.csv", "wb")
+open_file_object = csv.writer(predictions_file)
+open_file_object.writerow(["datetime","count"])
+open_file_object.writerows(zip(datetimes, output))
+predictions_file.close()
+print 'Done.'
+
+# # Validation
+# X_train, X_test, y_train, y_test = train_test_split(train_data[0::,0:-1], train_data[0::,-1], test_size=0.2, random_state=0)
+# forest = RandomForestRegressor(n_estimators=120)
+# forest.fit(X_train, y_train)
+# output = forest.predict(X_test)
+# print rmsle(output, y_test)
+# print forest.feature_importances_
