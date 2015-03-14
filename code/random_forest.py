@@ -18,17 +18,23 @@ def transform_data(df):
     time_values = []
     date_values = []
     month_values = []
+    year_values =[]
     weekday_values = []
+    isSunday_values = []
     for datetime_value in datetime_values:
         datetime_object = datetime.strptime(datetime_value, '%Y-%m-%d %H:%M:%S')
         time_values.append(datetime_object.hour)
         date_values.append(datetime_object.day)
         month_values.append(datetime_object.month)
+        year_values.append(datetime_object.year)
         weekday_values.append(datetime_object.weekday())
+        isSunday_values.append(1 if datetime_object.weekday() == 6 else 0)
     df['time'] = time_values
     df['date'] = date_values
     df['month'] = month_values
+    df['year'] = year_values
     df['weekday'] = weekday_values
+    df['isSunday'] = isSunday_values
     return df
 
 
@@ -46,8 +52,10 @@ test_df = transform_data(test_df)
 # df['time'] = df['time'].astype('category')
 # print df.dtypes
 
-train_data = df[['season','holiday','workingday','weather','temp','atemp','humidity','windspeed','time','weekday','month','count']].values
-test_data = test_df[['season','holiday','workingday','weather','temp','atemp','humidity','windspeed','time','weekday','month']].values
+features = ['season','holiday','workingday','weather','temp','atemp','humidity','windspeed','time','weekday','month', 'year', 'isSunday']
+train_features = features + ['count']
+train_data = df[train_features].values
+test_data = test_df[features].values
 
 # Train rf
 forest = RandomForestRegressor(n_estimators=120)
