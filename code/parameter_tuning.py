@@ -10,6 +10,7 @@ from datetime import datetime
 import sklearn.cluster as cluster
 from sklearn.decomposition import PCA
 
+
 def split_list(alist, wanted_parts=1):
     length = len(alist)
     return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts] 
@@ -107,99 +108,48 @@ def validate():
 
     ## GBM ##
     #  Parameter Tuning #
-    #  n_estimators : 100 better than 1000
-    #  max_depth    : 6 better than 7 (5 slightly better than 6)
-    ## Casual GBM
-    gbm_casual = GradientBoostingRegressor(n_estimators=120, max_depth = 6, random_state = 0)
-    gbm_casual.fit(X_train, y_train[0::,1])
-    output_gbm_casual = gbm_casual.predict(X_test)
-    output_gbm_casual = [int(exp(x)-1) for x in output_gbm_casual]
-    ## Resistered GBM
-    gbm_registered = GradientBoostingRegressor(n_estimators=120, max_depth = 6, random_state = 0)
-    gbm_registered.fit(X_train, y_train[0::,2])
-    output_gbm_registered = gbm_registered.predict(X_test)
-    output_gbm_registered = [int(exp(x)-1) for x in output_gbm_registered]
-    ## Combining GBM output
-    output_gbm = [x + y for x, y in zip(output_gbm_casual, output_gbm_registered)]
+    if algo == 'gbm':
+        #  n_estimators : 100 better than 1000
+        #  max_depth    : 6 better than 7 (5 slightly better than 6)
+        ## Casual GBM
+        gbm_casual = GradientBoostingRegressor(n_estimators=gbm_estimators, max_depth = gbm_depth, random_state = 0)
+        gbm_casual.fit(X_train, y_train[0::,1])
+        output_gbm_casual = gbm_casual.predict(X_test)
+        output_gbm_casual = [int(exp(x)-1) for x in output_gbm_casual]
+        ## Resistered GBM
+        gbm_registered = GradientBoostingRegressor(n_estimators=gbm_estimators, max_depth = gbm_depth, random_state = 0)
+        gbm_registered.fit(X_train, y_train[0::,2])
+        output_gbm_registered = gbm_registered.predict(X_test)
+        output_gbm_registered = [int(exp(x)-1) for x in output_gbm_registered]
+        ## Combining GBM output
+        output = [x + y for x, y in zip(output_gbm_casual, output_gbm_registered)]
+    elif algo == 'rf':
+        ## Random Forest ##
+        #  Parameter Tuning #
+        #  min_sample_split  :  11 better than 10
+        ## Casual Random Forest
+        rf_casual = RandomForestRegressor(n_estimators=rf_estimators, min_samples_split = rf_split, random_state = 0, n_jobs = -1)
+        rf_casual.fit(X_train, y_train[0::,1])
+        output_rf_casual = rf_casual.predict(X_test)
+        output_rf_casual = [int(exp(x)-1) for x in output_rf_casual]
+        ## Resistered Random Forest
+        rf_registered = RandomForestRegressor(n_estimators=rf_estimators, min_samples_split = rf_split, random_state = 0, n_jobs = -1)
+        rf_registered.fit(X_train, y_train[0::,2])
+        output_rf_registered = rf_registered.predict(X_test)
+        output_rf_registered = [int(exp(x)-1) for x in output_rf_registered]
+        ## Combine rf output
+        output = [x + y for x, y in zip(output_rf_casual, output_rf_registered)]
 
-    ## Random Forest ##
-    #  Parameter Tuning #
-    #  min_sample_split  :  11 better than 10
-    ## Casual Random Forest
-    rf_casual = RandomForestRegressor(n_estimators=2000, min_samples_split = 11, random_state = 0, n_jobs = -1)
-    rf_casual.fit(X_train, y_train[0::,1])
-    output_rf_casual = rf_casual.predict(X_test)
-    output_rf_casual = [int(exp(x)-1) for x in output_rf_casual]
-    ## Resistered Random Forest
-    rf_registered = RandomForestRegressor(n_estimators=2000, min_samples_split = 11, random_state = 0, n_jobs = -1)
-    rf_registered.fit(X_train, y_train[0::,2])
-    output_rf_registered = rf_registered.predict(X_test)
-    output_rf_registered = [int(exp(x)-1) for x in output_rf_registered]
-    ## Combine rf output
-    output_rf = [x + y for x, y in zip(output_rf_casual, output_rf_registered)]
+    output = [log(1+x) for x in output]
+    error = rmsle(output, y_test[0::,0])
+    print error
+    return error
 
-    combined_output = [x + y for x, y in zip(output_gbm, output_rf)]
-    combined_output[:] = [x/2.0 for x in combined_output]
-    output = [log(1+x) for x in output_rf]
-
-    print gbm_casual.feature_importances_
-    print gbm_registered.feature_importances_
-    print rf_casual.feature_importances_
-    print rf_registered.feature_importances_
-    print rmsle(output, y_test[0::,0])
-
-def predict():
-    ## Casual GBM
-    gbm_casual = GradientBoostingRegressor(n_estimators=120, max_depth = 6, random_state = 0)
-    gbm_casual.fit(X_train_data, y_train_data[0::,1])
-    ## Resistered GBM
-    gbm_registered = GradientBoostingRegressor(n_estimators=120, max_depth = 6, random_state = 0)
-    gbm_registered.fit(X_train_data, y_train_data[0::,2])
-    ## Casual Random Forest
-    rf_casual = RandomForestRegressor(n_estimators=2000, min_samples_split = 11, random_state = 0, n_jobs = -1)
-    rf_casual.fit(X_train_data, y_train_data[0::,1])
-    ## Resistered Random Forest
-    rf_registered = RandomForestRegressor(n_estimators=2000, min_samples_split = 11, random_state = 0, n_jobs = -1)
-    rf_registered.fit(X_train_data, y_train_data[0::,2])
-
-    ## GBM prediction
-    output_gbm_casual = gbm_casual.predict(test_data)
-    output_gbm_casual = [exp(x)-1 for x in output_gbm_casual]
-    output_gbm_casual = remove_negative(output_gbm_casual)
-
-    output_gbm_registered = gbm_registered.predict(test_data)
-    output_gbm_registered = [exp(x)-1 for x in output_gbm_registered]
-    output_gbm_registered = remove_negative(output_gbm_registered)
-
-    output_gbm = [x + y for x, y in zip(output_gbm_casual, output_gbm_registered)]
-    ## rf prediction
-    output_rf_casual = rf_casual.predict(test_data)
-    output_rf_casual = [exp(x)-1 for x in output_rf_casual]
-    output_rf_casual = remove_negative(output_rf_casual)
-
-    output_rf_registered = rf_registered.predict(test_data)
-    output_rf_registered = [exp(x)-1 for x in output_rf_registered]
-    output_rf_registered = remove_negative(output_rf_registered)
-
-    output_rf = [x + y for x, y in zip(output_rf_casual, output_rf_registered)]
-
-    combined_output = [x + y for x, y in zip(output_gbm, output_rf)]
-    combined_output[:] = [x/2.0 for x in combined_output]
-
-    # Prepare Kaggle Submission
-    datetimes = test_df['datetime'].values
-    predictions_file = open("../data/ensemble.csv", "wb")
-    open_file_object = csv.writer(predictions_file)
-    open_file_object.writerow(["datetime","count"])
-    open_file_object.writerows(zip(datetimes, combined_output))
-    predictions_file.close()
-    print 'Done.'
 
 if __name__ == '__main__':
-    validation =True
-    applyPCA = False
-    normalizeData = False
+    validation = True
     toCategorical = False
+    algo = 'rf'
 
     df = pd.read_csv('../data/train.csv')
     test_df = pd.read_csv('../data/test.csv')
@@ -230,13 +180,6 @@ if __name__ == '__main__':
         df['season'] = df['season'].astype('category')
         df['time'] = df['time'].astype('category')
 
-    # For random forests one feature is never compared in magnitude to other features, 
-    # the ranges don't matter. It's only the range of one feature that is split at each stage.
-    if normalizeData:
-        variables = ['temp','atemp','humidity','windspeed']
-        for variable in variables:
-            df[[variable]] = (df[[variable]]-df[[variable]].mean())/df[[variable]].std()
-
     # Adding 'time_since_epoch' overfits (on kaggle as well on validation)
     # Adding 'month' overfits (on kaggle as well as on validation)
     # Removing 'holiday' reduces the accuracy (on kaggle)
@@ -247,20 +190,54 @@ if __name__ == '__main__':
     X_train_date = df[['date']].values
     X_train_data = df[features].values
     y_train_data = df[['count', 'casual', 'registered']].values
-    test_data = test_df[features].values
 
-    # Could be useful if it replaces similar profiles with one score that is potentially less messy
-    # Accuracy decreases on applying PCA probably because of poorer decision trees
-    # X_train_data, test_data
-    if applyPCA:
-        pca = PCA(n_components=None)
-        pca.fit(X_train_data)
-        # pca.fit(np.append(X_train_data, test_data, axis=0))
-        print(pca.explained_variance_ratio_)
-        X_train_data = pca.transform(X_train_data)
-        test_data = pca.transform(test_data)
+    if algo == 'gbm':
+        # Estimating depth
+        gbm_estimators = 120
+        x_vals = [2,3,4,5,6,7,8,9,10,11,12,13,14]
+        error_vals = []
+        for gbm_depth in x_vals:
+            error = validate()
+            error_vals.append(error)
+        plt.plot(x_vals, error_vals)
+        plt.ylabel('Error')
+        plt.xlabel('Depth of tree')
+        plt.savefig('gbm_depth_tuning.png')
 
-    if validation:
-        validate()
-    else:
-        predict()
+        # Estimating number of estimators
+        gbm_depth = 6
+        x_vals = [20,50,80,100,120,200,400,500,1000,2000,3000]
+        error_vals = []
+        for gbm_estimators in x_vals:
+            error = validate()
+            error_vals.append(error)
+        plt.plot(x_vals, error_vals)
+        plt.ylabel('Error')
+        plt.xlabel('Number of estimators')
+        plt.savefig('gbm_estimator_tuning.png')
+
+    elif algo == 'rf':
+        # Estimating depth
+        rf_estimators = 1000
+        x_vals = [5,6,7,8,9,10,11,12,13,14,15]
+        error_vals = []
+        for rf_split in x_vals:
+            error = validate()
+            error_vals.append(error)
+        plt.plot(x_vals, error_vals)
+        plt.ylabel('Error')
+        plt.xlabel('rf split')
+        plt.savefig('rf_split_tuning.png')
+        plt.show()
+
+        # Estimating number of estimators
+        rf_split = 11
+        x_vals = [20,50,80,100,200,500,1000,2000,3000,4000]
+        error_vals = []
+        for rf_estimators in x_vals:
+            error = validate()
+            error_vals.append(error)
+        plt.plot(x_vals, error_vals)
+        plt.ylabel('Error')
+        plt.xlabel('Number of estimators')
+        plt.savefig('rf_estimator_tuning.png')
