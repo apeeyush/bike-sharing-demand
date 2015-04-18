@@ -140,7 +140,7 @@ def validate():
 
     combined_output = [x + y for x, y in zip(output_gbm, output_rf)]
     combined_output[:] = [x/2.0 for x in combined_output]
-    output = [log(1+x) for x in output_rf]
+    output = [log(1+x) for x in combined_output]
 
     print gbm_casual.feature_importances_
     print gbm_registered.feature_importances_
